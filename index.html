@@ -79,14 +79,14 @@
   .ylab .arrow{font-weight:400}
   .xlab{grid-column:2; grid-row:2; display:flex; align-items:center; justify-content:center; gap:10px;
     font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
-  .plot{grid-column:2; grid-row:1; position:relative; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--bg)}
-  .quad{position:absolute; width:50%; height:50%; display:flex; padding:12px}
+  .plot{grid-column:2; grid-row:1; position:relative; border:1px solid var(--line); border-radius:12px; background:var(--bg)}
+  .quad{position:absolute; width:50%; height:50%; display:flex; padding:12px; overflow:hidden}
   .quad span{font-size:12px; font-weight:700; letter-spacing:.02em; opacity:.9}
   .quad small{display:block; font-weight:500; font-size:11px; opacity:.75; letter-spacing:0; text-transform:none; margin-top:2px}
-  .q-tl{top:0; left:0; background:var(--qw-bg); color:var(--qw); align-items:flex-start; justify-content:flex-start}
-  .q-tr{top:0; right:0; background:var(--st-bg); color:var(--st); align-items:flex-start; justify-content:flex-end; text-align:right}
-  .q-bl{bottom:0; left:0; background:var(--fi-bg); color:var(--fi); align-items:flex-end; justify-content:flex-start}
-  .q-br{bottom:0; right:0; background:var(--dc-bg); color:var(--dc); align-items:flex-end; justify-content:flex-end; text-align:right}
+  .q-tl{top:0; left:0; background:var(--qw-bg); color:var(--qw); align-items:flex-start; justify-content:flex-start; border-top-left-radius:12px}
+  .q-tr{top:0; right:0; background:var(--st-bg); color:var(--st); align-items:flex-start; justify-content:flex-end; text-align:right; border-top-right-radius:12px}
+  .q-bl{bottom:0; left:0; background:var(--fi-bg); color:var(--fi); align-items:flex-end; justify-content:flex-start; border-bottom-left-radius:12px}
+  .q-br{bottom:0; right:0; background:var(--dc-bg); color:var(--dc); align-items:flex-end; justify-content:flex-end; text-align:right; border-bottom-right-radius:12px}
   .axis-line{position:absolute; background:var(--line)}
   .axis-line.v{left:50%; top:0; bottom:0; width:1px; transform:translateX(-.5px)}
   .axis-line.h{top:50%; left:0; right:0; height:1px; transform:translateY(-.5px)}
@@ -108,6 +108,9 @@
   .bubble .tag::after{content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
     border:6px solid transparent; border-top-color:var(--panel)}
   .bubble:hover .tag,.bubble:focus-within .tag{display:block}
+  /* burbujas cerca del borde superior: el tooltip se voltea hacia abajo para no cortarse */
+  .bubble.tip-below .tag{bottom:auto; top:calc(100% + 9px)}
+  .bubble.tip-below .tag::after{top:auto; bottom:100%; border-top-color:transparent; border-bottom-color:var(--panel)}
   .bubble.enter{animation:pop .45s cubic-bezier(.34,1.56,.64,1)}
   @keyframes pop{from{transform:translate(-50%,-50%) scale(.2); opacity:0}}
   /* ---------- legend / side ---------- */
@@ -356,7 +359,7 @@
   const sideNote=document.getElementById("sideNote");
   const bubbles=new Map();
 
-  function pos(ea,im){ const fx=(ea-1)/4, fy=(im-1)/4; return { x:8+fx*84, y:8+(1-fy)*84 }; }
+  function pos(ea,im){ const fx=(ea-1)/4, fy=(im-1)/4; return { x:11+fx*78, y:11+(1-fy)*78 }; }
   function layout(items){
     const groups={};
     items.forEach(function(it,idx){
@@ -367,11 +370,16 @@
     });
     Object.keys(groups).forEach(function(k){
       const g=groups[k], n=g.length;
+      if(n===1){ const b=pos(g[0].ea,g[0].im); g[0]._x=b.x; g[0]._y=b.y; return; }
+      // varias iniciativas en el mismo punto: se reparten en anillos para que los números no se pisen
+      const per=6;
       g.forEach(function(it,j){
         const base=pos(it.ea,it.im);
-        if(n===1){ it._x=base.x; it._y=base.y; return; }
-        const ang=(2*Math.PI*j)/n - Math.PI/2;
-        const rad=Math.min(7, 3+n*0.9);
+        const ring=Math.floor(j/per);
+        const inRing=Math.min(per, n-ring*per);
+        const idx=j%per;
+        const rad=4.5 + ring*4.5;
+        const ang=(2*Math.PI*idx)/Math.max(1,inRing) - Math.PI/2 + ring*0.6;
         it._x=base.x+Math.cos(ang)*rad;
         it._y=base.y+Math.sin(ang)*rad*0.9;
       });
@@ -399,6 +407,7 @@
       }
       el.style.left=it._x+"%";
       el.style.top=it._y+"%";
+      el.classList.toggle("tip-below", it._y < 22);
       const dp=el.querySelector(".dotpt");
       dp.style.background=color; dp.textContent=it._i;
       const tag=el.querySelector(".tag");
