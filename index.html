@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Matriz de Priorización · Ocean Spray</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: full-screen facilitation tool — header bar, matrix panel (left), live legend (right). Stacks on narrow. */
+  :root{
+    --bg:#f6f4ef; --panel:#ffffff; --ink:#1d1b17; --muted:#6f6a61; --line:#e4e0d7;
+    --accent:#b0334a;                 /* Ocean Spray cranberry */
+    --qw:#1a9e6e; --qw-bg:#e7f4ee;    /* quick wins  */
+    --st:#2d6cdf; --st-bg:#e8eefb;    /* estratégicos */
+    --fi:#c8912a; --fi-bg:#f6efdd;    /* relleno */
+    --dc:#d64545; --dc-bg:#fae9e7;    /* descartar */
+    --nt:#8a8479; --nt-bg:#edeae3;    /* neutro */
+    --shadow:0 1px 2px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#15140f; --panel:#201e18; --ink:#f2efe8; --muted:#a39d91; --line:#34302a;
+    --accent:#e2667b;
+    --qw:#4cc694; --qw-bg:#15271f; --st:#6f9bf0; --st-bg:#141d2f;
+    --fi:#e0b452; --fi-bg:#2a2314; --dc:#ef7a7a; --dc-bg:#2d1817; --nt:#9a9488; --nt-bg:#201e17;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.4); color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#15140f; --panel:#201e18; --ink:#f2efe8; --muted:#a39d91; --line:#34302a;
+    --accent:#e2667b;
+    --qw:#4cc694; --qw-bg:#15271f; --st:#6f9bf0; --st-bg:#141d2f;
+    --fi:#e0b452; --fi-bg:#2a2314; --dc:#ef7a7a; --dc-bg:#2d1817; --nt:#9a9488; --nt-bg:#201e17;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.4); color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex; flex-direction:column;
+    padding-top:env(safe-area-inset-top,0); padding-bottom:env(safe-area-inset-bottom,0);
+  }
+  h1,h2,h3{margin:0}
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:14px max(16px,env(safe-area-inset-right,0)) 14px max(16px,env(safe-area-inset-left,0));
+    border-bottom:1px solid var(--line); background:var(--panel);
+  }
+  .brand{display:flex; flex-direction:column; gap:2px; margin-right:auto; min-width:0}
+  .brand h1{font-family:Fraunces,Georgia,serif; font-weight:600; font-size:clamp(18px,2.4vw,26px); line-height:1.1}
+  .brand .sub{font-size:12px; color:var(--muted); letter-spacing:.04em; text-transform:uppercase}
+  .status{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); white-space:nowrap}
+  .dot{width:9px; height:9px; border-radius:50%; background:var(--nt); flex:none}
+  .dot.ok{background:var(--qw)} .dot.err{background:var(--dc)} .dot.demo{background:var(--fi)}
+  .count{font-weight:600; color:var(--ink)}
+  .btn{
+    font:inherit; font-size:13px; font-weight:600; color:var(--ink); background:var(--panel);
+    border:1px solid var(--line); border-radius:9px; padding:8px 12px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn:hover{border-color:var(--muted)}
+  .btn.primary{background:var(--accent); color:#fff; border-color:transparent}
+  /* ---------- main ---------- */
+  main{flex:1; display:grid; grid-template-columns:1.6fr .9fr; gap:18px; min-height:0;
+    padding:18px max(16px,env(safe-area-inset-right,0)) 18px max(16px,env(safe-area-inset-left,0));}
+  @media (max-width:860px){ main{grid-template-columns:1fr; overflow:auto} }
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); min-width:0}
+  /* ---------- matrix ---------- */
+  .matrix-wrap{display:flex; flex-direction:column; padding:16px 18px 10px}
+  .matrix-head{display:flex; align-items:baseline; gap:10px; margin-bottom:10px}
+  .matrix-head h2{font-family:Fraunces,Georgia,serif; font-weight:600; font-size:17px}
+  .matrix-head .hint{font-size:12px; color:var(--muted)}
+  .plot-grid{flex:1; display:grid; grid-template-columns:26px 1fr; grid-template-rows:1fr 26px; gap:8px; min-height:320px}
+  .ylab{grid-column:1; grid-row:1; writing-mode:vertical-rl; transform:rotate(180deg);
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
+  .ylab .arrow{font-weight:400}
+  .xlab{grid-column:2; grid-row:2; display:flex; align-items:center; justify-content:center; gap:10px;
+    font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
+  .plot{grid-column:2; grid-row:1; position:relative; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--bg)}
+  .quad{position:absolute; width:50%; height:50%; display:flex; padding:12px}
+  .quad span{font-size:12px; font-weight:700; letter-spacing:.02em; opacity:.9}
+  .quad small{display:block; font-weight:500; font-size:11px; opacity:.75; letter-spacing:0; text-transform:none; margin-top:2px}
+  .q-tl{top:0; left:0; background:var(--qw-bg); color:var(--qw); align-items:flex-start; justify-content:flex-start}
+  .q-tr{top:0; right:0; background:var(--st-bg); color:var(--st); align-items:flex-start; justify-content:flex-end; text-align:right}
+  .q-bl{bottom:0; left:0; background:var(--fi-bg); color:var(--fi); align-items:flex-end; justify-content:flex-start}
+  .q-br{bottom:0; right:0; background:var(--dc-bg); color:var(--dc); align-items:flex-end; justify-content:flex-end; text-align:right}
+  .axis-line{position:absolute; background:var(--line)}
+  .axis-line.v{left:50%; top:0; bottom:0; width:1px; transform:translateX(-.5px)}
+  .axis-line.h{top:50%; left:0; right:0; height:1px; transform:translateY(-.5px)}
+  .bubble{position:absolute; transform:translate(-50%,-50%);
+    transition:left .6s cubic-bezier(.33,1,.68,1), top .6s cubic-bezier(.33,1,.68,1);
+    display:flex; align-items:center; gap:7px; z-index:2}
+  .bubble .dotpt{width:28px; height:28px; border-radius:50%; flex:none; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;
+    box-shadow:0 2px 6px rgba(0,0,0,.25); border:2px solid var(--panel)}
+  .bubble .tag{font-size:12px; font-weight:600; max-width:140px; line-height:1.15;
+    background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:3px 7px;
+    box-shadow:0 1px 3px rgba(0,0,0,.12); color:var(--ink)}
+  .bubble.enter{animation:pop .45s cubic-bezier(.34,1.56,.64,1)}
+  @keyframes pop{from{transform:translate(-50%,-50%) scale(.2); opacity:0}}
+  /* ---------- legend / side ---------- */
+  .side{display:flex; flex-direction:column; padding:16px 16px 8px; overflow:auto}
+  .side h2{font-family:Fraunces,Georgia,serif; font-weight:600; font-size:16px; margin-bottom:4px}
+  .side .note{font-size:12px; color:var(--muted); margin-bottom:12px}
+  .grp{margin-bottom:12px}
+  .grp .ghead{display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700;
+    letter-spacing:.03em; text-transform:uppercase; margin-bottom:6px}
+  .grp .ghead .sw{width:11px; height:11px; border-radius:3px; flex:none}
+  .grp .ghead .n{margin-left:auto; color:var(--muted); font-weight:600}
+  .item{display:flex; gap:8px; align-items:flex-start; font-size:13px; padding:4px 0; border-top:1px solid var(--line)}
+  .item .num{width:20px; height:20px; border-radius:50%; flex:none; color:#fff; font-size:11px; font-weight:700;
+    display:flex; align-items:center; justify-content:center}
+  .item .txt{min-width:0}
+  .item .txt b{font-weight:600}
+  .item .txt .meta{color:var(--muted); font-size:11px}
+  .empty{color:var(--muted); font-size:13px; padding:8px 0; line-height:1.5}
+  /* ---------- settings dialog ---------- */
+  .scrim{position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; z-index:50; padding:16px}
+  .scrim.open{display:flex}
+  .dlg{background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow);
+    width:min(540px,100%); max-height:90vh; overflow:auto; padding:22px}
+  .dlg h2{font-family:Fraunces,Georgia,serif; font-size:20px; margin-bottom:4px}
+  .dlg p.lead{font-size:13px; color:var(--muted); margin:0 0 16px}
+  .field{margin-bottom:14px}
+  .field label{display:block; font-size:12px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:var(--muted); margin-bottom:5px}
+  .field input[type=text],.field input[type=number]{width:100%; font:inherit; font-size:14px; padding:9px 11px;
+    border:1px solid var(--line); border-radius:9px; background:var(--bg); color:var(--ink)}
+  .field .help{font-size:12px; color:var(--muted); margin-top:5px; line-height:1.4}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  .seg{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden}
+  .seg button{font:inherit; font-size:13px; font-weight:600; padding:8px 12px; background:var(--panel); color:var(--ink); border:0; cursor:pointer}
+  .seg button[aria-pressed=true]{background:var(--accent); color:#fff}
+  .steps{font-size:13px; line-height:1.5; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:4px 0 16px}
+  .steps ol{margin:6px 0 0; padding-left:20px} .steps li{margin:3px 0}
+  .steps code{background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:12px}
+  .dlg .actions{display:flex; gap:10px; justify-content:flex-end; margin-top:6px}
+  .adv{font-size:12px; color:var(--muted); cursor:pointer; user-select:none}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Matriz de Priorización de Iniciativas</h1>
+      <span class="sub">Ocean Spray · Planificación Estratégica</span>
+    </div>
+    <div class="status" id="status">
+      <span class="dot" id="dot"></span>
+      <span id="statusText">Iniciando…</span>
+      <span class="count" id="countText"></span>
+    </div>
+    <button class="btn" id="refreshBtn" title="Actualizar ahora">↻ Actualizar</button>
+    <button class="btn" id="themeBtn" title="Claro / oscuro">◐</button>
+    <button class="btn primary" id="settingsBtn">⚙ Fuente de datos</button>
+  </header>
+
+  <main>
+    <section class="card matrix-wrap">
+      <div class="matrix-head">
+        <h2>Impacto × Esfuerzo</h2>
+        <span class="hint">Se actualiza automáticamente a medida que completan la planilla</span>
+      </div>
+      <div class="plot-grid">
+        <div class="ylab"><span class="arrow">↑</span> Impacto esperado</div>
+        <div class="xlab">Esfuerzo requerido <span class="arrow">→</span></div>
+        <div class="plot" id="plot">
+          <div class="quad q-tl"><span>Ganancias rápidas<small>Priorizar — alto impacto, bajo esfuerzo</small></span></div>
+          <div class="quad q-tr"><span>Proyectos estratégicos<small>Planificar — alto impacto, alto esfuerzo</small></span></div>
+          <div class="quad q-bl"><span>Tareas de relleno<small>Si hay capacidad — bajo impacto y esfuerzo</small></span></div>
+          <div class="quad q-br"><span>Reconsiderar<small>Cuestionar — bajo impacto, alto esfuerzo</small></span></div>
+          <div class="axis-line v"></div>
+          <div class="axis-line h"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="card side">
+      <h2>Iniciativas</h2>
+      <div class="note" id="sideNote">Esperando datos…</div>
+      <div id="groups"></div>
+    </aside>
+  </main>
+
+  <!-- settings -->
+  <div class="scrim" id="scrim">
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+      <h2 id="dlgTitle">Fuente de datos</h2>
+      <p class="lead">Esta matriz lee tu planilla de Google Sheets y se actualiza sola.</p>
+
+      <div class="steps">
+        <strong>Requisito (ya lo hiciste):</strong> la planilla debe poder leerse sin iniciar sesión.
+        En Google Sheets, botón <code>Compartir</code> → <em>Acceso general</em> → <strong>“Cualquier persona con el enlace: Lector”</strong>.
+        Con eso basta — no necesitas nada más.
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:1; min-width:150px">
+          <label for="intervalInput">Actualizar cada (seg)</label>
+          <input type="number" id="intervalInput" min="2" max="120" value="5">
+        </div>
+        <div class="field" style="flex:1; min-width:150px">
+          <label>Datos</label>
+          <div class="seg" role="group" aria-label="Modo de datos">
+            <button id="modeLive" aria-pressed="true">En vivo</button>
+            <button id="modeDemo" aria-pressed="false">Ejemplo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="adv" id="advToggle">▸ Opciones avanzadas</span>
+        <div id="advBox" hidden style="margin-top:10px">
+          <label for="gidInput">Hoja (gid) — déjalo en 0 para “Priorización de Acciones”</label>
+          <input type="number" id="gidInput" min="0" value="0">
+          <div class="help">Solo cámbialo si conectas otra pestaña de la planilla.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="cancelBtn">Cancelar</button>
+        <button class="btn primary" id="saveBtn">Guardar y conectar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+  const SHEET_ID = "1S12UyqLZxr6DwzaBDcaxVYUeF5m_VwYYzafP6HTlS2U";
+
+  const LS = {
+    get interval(){ try{return +localStorage.getItem("osp.int")||5}catch(e){return 5} },
+    set interval(v){ try{localStorage.setItem("osp.int",v)}catch(e){} },
+    get mode(){ try{return localStorage.getItem("osp.mode")||"live"}catch(e){return "live"} },
+    set mode(v){ try{localStorage.setItem("osp.mode",v)}catch(e){} },
+    get gid(){ try{return localStorage.getItem("osp.gid")||"0"}catch(e){return "0"} },
+    set gid(v){ try{localStorage.setItem("osp.gid",v)}catch(e){} },
+    get theme(){ try{return localStorage.getItem("osp.theme")}catch(e){return null} },
+    set theme(v){ try{localStorage.setItem("osp.theme",v)}catch(e){} },
+  };
+
+  const DEMO = [
+    ["Comercial","Nuevo canal de e-commerce directo","alto","muy alto"],
+    ["Operaciones","Optimizar logística de distribución","neutro","alto"],
+    ["Marca","Campaña de notoriedad regional","bajo","alto"],
+    ["Operaciones","Migrar ERP a la nube","muy alto","neutro"],
+    ["Comercial","Programa de fidelización","bajo","neutro"],
+    ["Innovación","Línea de productos sin azúcar","alto","muy alto"],
+    ["RRHH","Plan de capacitación interna","bajo","bajo"],
+    ["Operaciones","Rediseño de empaques premium","muy alto","bajo"],
+    ["Marca","Rebranding completo","muy alto","neutro"],
+    ["Innovación","Piloto de agricultura de precisión","neutro","neutro"],
+  ];
+
+  // ---- scale mapping ----
+  function norm(s){ return (s||"").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim(); }
+  function level(s){
+    const n = norm(s);
+    if(!n) return null;
+    if(n.includes("muy alto")) return 5;
+    if(n.includes("muy bajo")) return 1;
+    if(n.includes("alto")) return 4;
+    if(n.includes("bajo")) return 2;
+    if(n.includes("neutro")||n.includes("neutral")||n.includes("medio")) return 3;
+    const num = parseFloat(n.replace(",","."));
+    if(!isNaN(num)) return Math.max(1,Math.min(5,num));
+    return null;
+  }
+
+  // ---- gviz loader via <script> (no CORS; works from file:// double-click) ----
+  let jsonpSeq = 0;
+  function loadGviz(gid){
+    return new Promise(function(resolve,reject){
+      const cb = "__osp_cb_" + (++jsonpSeq);
+      let done = false;
+      const s = document.createElement("script");
+      const to = setTimeout(function(){ finish(function(){ reject(new Error("Tiempo de espera agotado.")); }); }, 15000);
+      function finish(fn){
+        if(done) return; done = true;
+        clearTimeout(to);
+        try{ delete window[cb]; }catch(e){ window[cb] = undefined; }
+        if(s.parentNode) s.parentNode.removeChild(s);
+        fn();
+      }
+      window[cb] = function(resp){ finish(function(){ resolve(resp); }); };
+      s.onerror = function(){ finish(function(){ reject(new Error("No se pudo cargar la planilla (¿está compartida como ‘cualquiera con el enlace’?).")); }); };
+      s.src = "https://docs.google.com/spreadsheets/d/" + SHEET_ID +
+              "/gviz/tq?gid=" + encodeURIComponent(gid) +
+              "&tqx=reqId:0;responseHandler:" + cb + "&_t=" + Date.now();
+      document.head.appendChild(s);
+    });
+  }
+  function gvizToRows(resp){
+    const out = [];
+    const t = resp && resp.table;
+    if(!t || !t.rows) return out;
+    t.rows.forEach(function(r){
+      const cells = (r.c || []).map(function(c){ return (c && c.v != null) ? String(c.v) : ""; });
+      out.push(cells);
+    });
+    return out;
+  }
+
+  function toInitiatives(rows){
+    if(!rows.length) return [];
+    let start=0;
+    const h0=norm(rows[0][0]||""), h1=norm(rows[0][1]||"");
+    if(h0==="tema"||h0==="foco estrategico"||h1==="accion"||norm(rows[0][2]||"").includes("esfuerzo")) start=1;
+    const out=[];
+    for(let r=start;r<rows.length;r++){
+      const cols=rows[r];
+      const tema=(cols[0]||"").trim();
+      const accion=(cols[1]||"").trim();
+      const ea=level(cols[2]);
+      const im=level(cols[3]);
+      if(!accion) continue;
+      out.push({tema,accion,ea,im});
+    }
+    return out;
+  }
+
+  // ---- quadrant classification ----
+  function quad(ea,im){
+    if(ea==null||im==null) return "unclassified";
+    if(im>3 && ea<3) return "qw";
+    if(im>3 && ea>3) return "st";
+    if(im<3 && ea<3) return "fi";
+    if(im<3 && ea>3) return "dc";
+    return "nt";
+  }
+  const QMETA={
+    qw:{name:"Ganancias rápidas",v:"--qw"},
+    st:{name:"Proyectos estratégicos",v:"--st"},
+    fi:{name:"Tareas de relleno",v:"--fi"},
+    dc:{name:"Reconsiderar",v:"--dc"},
+    nt:{name:"En el límite",v:"--nt"},
+    unclassified:{name:"Sin clasificar",v:"--nt"},
+  };
+  const QORDER=["qw","st","fi","dc","nt","unclassified"];
+
+  // ---- rendering ----
+  const plot=document.getElementById("plot");
+  const groupsEl=document.getElementById("groups");
+  const sideNote=document.getElementById("sideNote");
+  const bubbles=new Map();
+
+  function pos(ea,im){ const fx=(ea-1)/4, fy=(im-1)/4; return { x:8+fx*84, y:8+(1-fy)*84 }; }
+  function layout(items){
+    const groups={};
+    items.forEach(function(it,idx){
+      it._i=idx+1;
+      if(it.ea==null||it.im==null) return;
+      const k=it.ea+"|"+it.im;
+      (groups[k]=groups[k]||[]).push(it);
+    });
+    Object.keys(groups).forEach(function(k){
+      const g=groups[k], n=g.length;
+      g.forEach(function(it,j){
+        const base=pos(it.ea,it.im);
+        if(n===1){ it._x=base.x; it._y=base.y; return; }
+        const ang=(2*Math.PI*j)/n - Math.PI/2;
+        const rad=Math.min(7, 3+n*0.9);
+        it._x=base.x+Math.cos(ang)*rad;
+        it._y=base.y+Math.sin(ang)*rad*0.9;
+      });
+    });
+  }
+  function cssvar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  function doRender(items){
+    layout(items);
+    const seen=new Set();
+    items.forEach(function(it){
+      if(it.ea==null||it.im==null) return;
+      const key=it.accion+"@"+it.tema;
+      seen.add(key);
+      const q=quad(it.ea,it.im);
+      const color=cssvar(QMETA[q].v);
+      let el=bubbles.get(key);
+      if(!el){
+        el=document.createElement("div");
+        el.className="bubble enter";
+        el.innerHTML='<span class="dotpt"></span><span class="tag"></span>';
+        plot.appendChild(el);
+        bubbles.set(key,el);
+        setTimeout(function(){ el.classList.remove("enter"); },500);
+      }
+      el.style.left=it._x+"%";
+      el.style.top=it._y+"%";
+      const dp=el.querySelector(".dotpt");
+      dp.style.background=color; dp.textContent=it._i;
+      const tag=el.querySelector(".tag");
+      tag.textContent=it.accion;
+      tag.title=(it.tema?it.tema+" · ":"")+it.accion;
+    });
+    bubbles.forEach(function(el,key){ if(!seen.has(key)){ el.remove(); bubbles.delete(key); } });
+    renderSide(items);
+  }
+
+  const SCALE={1:"Muy bajo",2:"Bajo",3:"Neutro",4:"Alto",5:"Muy alto"};
+  function scaleLabel(v){ return SCALE[Math.round(v)]||v; }
+  function esc(s){ return (s||"").replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+
+  function renderSide(items){
+    const byq={};
+    items.forEach(function(it){ const q=quad(it.ea,it.im); (byq[q]=byq[q]||[]).push(it); });
+    groupsEl.innerHTML="";
+    let any=false;
+    QORDER.forEach(function(q){
+      const list=byq[q]; if(!list||!list.length) return;
+      any=true;
+      const color=cssvar(QMETA[q].v);
+      const wrap=document.createElement("div"); wrap.className="grp";
+      wrap.innerHTML='<div class="ghead"><span class="sw" style="background:'+color+'"></span>'+QMETA[q].name+'<span class="n">'+list.length+'</span></div>';
+      list.forEach(function(it){
+        const row=document.createElement("div"); row.className="item";
+        const lbl=[];
+        if(it.ea!=null) lbl.push("Esf: "+scaleLabel(it.ea));
+        if(it.im!=null) lbl.push("Imp: "+scaleLabel(it.im));
+        const numHtml=(it.ea!=null&&it.im!=null)?'<span class="num" style="background:'+color+'">'+it._i+'</span>':'<span class="num" style="background:var(--nt)">–</span>';
+        row.innerHTML=numHtml+'<span class="txt"><b>'+esc(it.accion)+'</b><br><span class="meta">'+(it.tema?esc(it.tema)+(lbl.length?" · ":""):"")+lbl.join(" · ")+'</span></span>';
+        wrap.appendChild(row);
+      });
+      groupsEl.appendChild(wrap);
+    });
+    if(!any){ groupsEl.innerHTML='<div class="empty">Aún no hay iniciativas con impacto y esfuerzo cargados. A medida que el equipo complete las columnas en la planilla, irán apareciendo aquí y en la matriz.</div>'; }
+    const classified=items.filter(function(it){return it.ea!=null&&it.im!=null;}).length;
+    sideNote.textContent = items.length ? (classified+" de "+items.length+" iniciativas ubicadas en la matriz") : "Esperando datos…";
+  }
+
+  // keep last items to re-render on theme change
+  let currentItems=[];
+  function render(items){ currentItems=items; doRender(items); }
+
+  // ---- status ----
+  const dot=document.getElementById("dot");
+  const statusText=document.getElementById("statusText");
+  const countText=document.getElementById("countText");
+  function setStatus(kind,msg,count){
+    dot.className="dot"+(kind?(" "+kind):"");
+    statusText.textContent=msg;
+    countText.textContent=(count!=null)?("· "+count+" iniciativas"):"";
+  }
+  function timeStr(){ const d=new Date(); return d.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
+
+  // ---- loop ----
+  let timer=null, loading=false;
+  async function tick(){
+    if(LS.mode==="demo"){
+      render(toInitiatives(DEMO));
+      setStatus("demo","Modo ejemplo (datos ficticios) · "+timeStr(), DEMO.length);
+      return;
+    }
+    if(loading) return;
+    loading=true;
+    try{
+      const resp=await loadGviz(LS.gid);
+      if(resp && resp.status==="error"){
+        const m=(resp.errors&&resp.errors[0]&&resp.errors[0].message)||"error de la planilla";
+        throw new Error(m);
+      }
+      const items=toInitiatives(gvizToRows(resp));
+      render(items);
+      setStatus("ok","Conectado · actualizado "+timeStr(), items.length);
+    }catch(err){
+      setStatus("err","Sin conexión · "+(err.message||err), null);
+    }finally{
+      loading=false;
+    }
+  }
+  function startLoop(){
+    if(timer) clearInterval(timer);
+    tick();
+    timer=setInterval(tick, Math.max(2,LS.interval)*1000);
+  }
+
+  // ---- settings dialog ----
+  const scrim=document.getElementById("scrim");
+  const intervalInput=document.getElementById("intervalInput");
+  const gidInput=document.getElementById("gidInput");
+  const modeLive=document.getElementById("modeLive");
+  const modeDemo=document.getElementById("modeDemo");
+  const advToggle=document.getElementById("advToggle");
+  const advBox=document.getElementById("advBox");
+  let dlgMode=LS.mode;
+  function setDlgMode(m){ dlgMode=m; modeLive.setAttribute("aria-pressed", m==="live"); modeDemo.setAttribute("aria-pressed", m==="demo"); }
+  function openDlg(){
+    intervalInput.value=LS.interval;
+    gidInput.value=LS.gid;
+    setDlgMode(LS.mode);
+    scrim.classList.add("open");
+  }
+  function closeDlg(){ scrim.classList.remove("open"); }
+  document.getElementById("settingsBtn").onclick=openDlg;
+  document.getElementById("cancelBtn").onclick=closeDlg;
+  scrim.onclick=function(e){ if(e.target===scrim) closeDlg(); };
+  modeLive.onclick=function(){ setDlgMode("live"); };
+  modeDemo.onclick=function(){ setDlgMode("demo"); };
+  advToggle.onclick=function(){ advBox.hidden=!advBox.hidden; advToggle.textContent=(advBox.hidden?"▸":"▾")+" Opciones avanzadas"; };
+  document.getElementById("saveBtn").onclick=function(){
+    LS.interval=Math.max(2,Math.min(120,+intervalInput.value||5));
+    LS.gid=String(Math.max(0,+gidInput.value||0));
+    LS.mode=dlgMode;
+    closeDlg();
+    startLoop();
+  };
+  document.getElementById("refreshBtn").onclick=tick;
+
+  // ---- theme ----
+  function applyTheme(t){ if(t) document.documentElement.setAttribute("data-theme",t); else document.documentElement.removeAttribute("data-theme"); }
+  applyTheme(LS.theme);
+  document.getElementById("themeBtn").onclick=function(){
+    const cur=document.documentElement.getAttribute("data-theme");
+    const dark=cur? cur==="dark" : matchMedia("(prefers-color-scheme:dark)").matches;
+    const next=dark?"light":"dark";
+    LS.theme=next; applyTheme(next);
+    doRender(currentItems);
+  };
+
+  // boot
+  startLoop();
+})();
+</script>
+</body>
+</html>
