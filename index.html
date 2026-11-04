@@ -92,13 +92,22 @@
   .axis-line.h{top:50%; left:0; right:0; height:1px; transform:translateY(-.5px)}
   .bubble{position:absolute; transform:translate(-50%,-50%);
     transition:left .6s cubic-bezier(.33,1,.68,1), top .6s cubic-bezier(.33,1,.68,1);
-    display:flex; align-items:center; gap:7px; z-index:2}
-  .bubble .dotpt{width:28px; height:28px; border-radius:50%; flex:none; color:#fff;
-    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; z-index:2; cursor:help}
+  .bubble:hover,.bubble:focus-within{z-index:20}
+  .bubble .dotpt{width:30px; height:30px; border-radius:50%; flex:none; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;
     box-shadow:0 2px 6px rgba(0,0,0,.25); border:2px solid var(--panel)}
-  .bubble .tag{font-size:12px; font-weight:600; max-width:140px; line-height:1.15;
-    background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:3px 7px;
-    box-shadow:0 1px 3px rgba(0,0,0,.12); color:var(--ink)}
+  .bubble:hover .dotpt,.bubble:focus-within .dotpt{box-shadow:0 0 0 3px var(--panel),0 3px 10px rgba(0,0,0,.4)}
+  /* nombre de la iniciativa: oculto, aparece como tooltip al pasar el cursor */
+  .bubble .tag{position:absolute; bottom:calc(100% + 9px); left:50%; transform:translateX(-50%);
+    display:none; width:max-content; max-width:220px; text-align:center;
+    font-size:12px; font-weight:600; line-height:1.2; color:var(--ink);
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px 10px;
+    box-shadow:0 6px 18px rgba(0,0,0,.22); z-index:21; pointer-events:none}
+  .bubble .tag .tmeta{display:block; font-weight:500; font-size:11px; color:var(--muted); margin-top:2px}
+  .bubble .tag::after{content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:6px solid transparent; border-top-color:var(--panel)}
+  .bubble:hover .tag,.bubble:focus-within .tag{display:block}
   .bubble.enter{animation:pop .45s cubic-bezier(.34,1.56,.64,1)}
   @keyframes pop{from{transform:translate(-50%,-50%) scale(.2); opacity:0}}
   /* ---------- legend / side ---------- */
@@ -393,8 +402,11 @@
       const dp=el.querySelector(".dotpt");
       dp.style.background=color; dp.textContent=it._i;
       const tag=el.querySelector(".tag");
-      tag.textContent=it.accion;
-      tag.title=(it.tema?it.tema+" · ":"")+it.accion;
+      const meta=[];
+      if(it.tema) meta.push(esc(it.tema));
+      if(it.ea!=null) meta.push("Esf: "+scaleLabel(it.ea));
+      if(it.im!=null) meta.push("Imp: "+scaleLabel(it.im));
+      tag.innerHTML='<span>'+esc(it.accion)+'</span>'+(meta.length?'<span class="tmeta">'+meta.join(" · ")+'</span>':'');
     });
     bubbles.forEach(function(el,key){ if(!seen.has(key)){ el.remove(); bubbles.delete(key); } });
     renderSide(items);
