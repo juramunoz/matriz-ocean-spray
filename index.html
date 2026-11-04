@@ -129,6 +129,14 @@
   .item .txt b{font-weight:600}
   .item .txt .meta{color:var(--muted); font-size:11px}
   .empty{color:var(--muted); font-size:13px; padding:8px 0; line-height:1.5}
+  /* leyenda de temas (color de cada foco estratégico) */
+  .tlegend{margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--line)}
+  .tlegend:empty{display:none}
+  .tlegend h3{font-size:12px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+  .tlegend .trow{display:flex; gap:8px; align-items:flex-start; font-size:12px; line-height:1.3; padding:3px 0}
+  .tlegend .tsw{width:13px; height:13px; border-radius:50%; flex:none; margin-top:1px}
+  .tlegend .tnm{min-width:0; font-weight:500}
+  .tlegend .tn{margin-left:auto; color:var(--muted); font-weight:600; padding-left:6px; font-variant-numeric:tabular-nums}
   /* ---------- settings dialog ---------- */
   .scrim{position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; z-index:50; padding:16px}
   .scrim.open{display:flex}
@@ -192,6 +200,7 @@
     <aside class="card side">
       <h2>Iniciativas</h2>
       <div class="note" id="sideNote">Esperando datos…</div>
+      <div class="tlegend" id="temaLegend"></div>
       <div id="groups"></div>
     </aside>
   </main>
@@ -353,10 +362,25 @@
   };
   const QORDER=["qw","st","fi","dc","nt","unclassified"];
 
+  // ---- color por Tema (foco estratégico) ----
+  const TEMA_PALETTE=["#2d6cdf","#1a9e6e","#c8912a","#d64545","#8e4ec6","#0f9bd1","#e5692a","#b0334a","#5a7d2a","#c2497f"];
+  function temaLabel(t){ t=(t||"").trim(); return t||"Sin tema"; }
+  function temaColor(t){
+    t=(t||"").trim();
+    if(!t) return "#8a8479";
+    const m=t.match(/^(\d+)/);
+    let idx;
+    if(m){ idx=parseInt(m[1],10)-1; }
+    else { let h=0; for(let i=0;i<t.length;i++){ h=(h*31+t.charCodeAt(i))>>>0; } idx=h; }
+    idx=((idx%TEMA_PALETTE.length)+TEMA_PALETTE.length)%TEMA_PALETTE.length;
+    return TEMA_PALETTE[idx];
+  }
+
   // ---- rendering ----
   const plot=document.getElementById("plot");
   const groupsEl=document.getElementById("groups");
   const sideNote=document.getElementById("sideNote");
+  const temaLegendEl=document.getElementById("temaLegend");
   const bubbles=new Map();
 
   function pos(ea,im){ const fx=(ea-1)/4, fy=(im-1)/4; return { x:11+fx*78, y:11+(1-fy)*78 }; }
@@ -394,8 +418,7 @@
       if(it.ea==null||it.im==null) return;
       const key=it.accion+"@"+it.tema;
       seen.add(key);
-      const q=quad(it.ea,it.im);
-      const color=cssvar(QMETA[q].v);
+      const color=temaColor(it.tema);
       let el=bubbles.get(key);
       if(!el){
         el=document.createElement("div");
@@ -429,6 +452,26 @@
     const byq={};
     items.forEach(function(it){ const q=quad(it.ea,it.im); (byq[q]=byq[q]||[]).push(it); });
     groupsEl.innerHTML="";
+    // leyenda de temas (solo las iniciativas ya ubicadas)
+    const tmap={};
+    items.forEach(function(it){
+      if(it.ea==null||it.im==null) return;
+      const lbl=temaLabel(it.tema);
+      if(!tmap[lbl]) tmap[lbl]={color:temaColor(it.tema), n:0};
+      tmap[lbl].n++;
+    });
+    const tkeys=Object.keys(tmap).sort(function(a,b){
+      const na=parseInt((a.match(/^\s*(\d+)/)||[])[1]||"9999",10);
+      const nb=parseInt((b.match(/^\s*(\d+)/)||[])[1]||"9999",10);
+      return na-nb || a.localeCompare(b);
+    });
+    if(tkeys.length){
+      let html='<h3>Temas</h3>';
+      tkeys.forEach(function(lbl){
+        html+='<div class="trow"><span class="tsw" style="background:'+tmap[lbl].color+'"></span><span class="tnm">'+esc(lbl)+'</span><span class="tn">'+tmap[lbl].n+'</span></div>';
+      });
+      temaLegendEl.innerHTML=html;
+    }else{ temaLegendEl.innerHTML=""; }
     let any=false;
     QORDER.forEach(function(q){
       const list=byq[q]; if(!list||!list.length) return;
@@ -441,7 +484,8 @@
         const lbl=[];
         if(it.ea!=null) lbl.push("Esf: "+scaleLabel(it.ea));
         if(it.im!=null) lbl.push("Imp: "+scaleLabel(it.im));
-        const numHtml=(it.ea!=null&&it.im!=null)?'<span class="num" style="background:'+color+'">'+it._i+'</span>':'<span class="num" style="background:var(--nt)">–</span>';
+        const bcolor=(it.ea!=null&&it.im!=null)?temaColor(it.tema):"var(--nt)";
+        const numHtml='<span class="num" style="background:'+bcolor+'">'+((it.ea!=null&&it.im!=null)?it._i:'–')+'</span>';
         row.innerHTML=numHtml+'<span class="txt"><b>'+esc(it.accion)+'</b><br><span class="meta">'+(it.tema?esc(it.tema)+(lbl.length?" · ":""):"")+lbl.join(" · ")+'</span></span>';
         wrap.appendChild(row);
       });
